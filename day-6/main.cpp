@@ -1,3 +1,5 @@
+# https://adventofcode.com/2021/day/6
+
 #include <iostream>
 #include <fstream>
 #include <string>
