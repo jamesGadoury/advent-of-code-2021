@@ -96,12 +96,16 @@ class Simulation:
     def initialized(self):
         return len(self.steps) != 0
 
-def simulate_trajectory(initial_velocity: Velocity, target_area: TargetArea, step_count: int = 100) -> Simulation:
-    sim = Simulation(init_state=SimulationState(probe_state=init_probe_state(initial_velocity), target_area=target_area))
+def simulate_trajectory(init_velocity: Velocity, target_area: TargetArea, step_count: int = 100) -> Simulation:
+    logging.debug(f'simulate_trajectory called with init_velocity={init_velocity}, target_area={target_area}, step_count={step_count}')
+    probe_state = init_probe_state(init_velocity)
+    logging.debug(f'in simulate_trajectory, initial probe state: {probe_state}')
+    sim = Simulation(init_state=SimulationState(probe_state=probe_state, target_area=target_area))
 
     # todo -> need to find a better condition for evaluation whether or not to keep stepping sim
     for i in range(step_count):
         probe_state = step_probe_state(sim.last_state().probe_state)
+        logging.debug(f'in simulate_trajectory, probe_state: {probe_state} for sim step: {i}')
         new_sim_state = SimulationState(probe_state=probe_state, target_area=target_area)
         sim.add_step(new_sim_state)
         if new_sim_state.has_probe_within_target_area():
@@ -115,7 +119,7 @@ def simulate_trajectory(initial_velocity: Velocity, target_area: TargetArea, ste
 
 def find_sim_in_target_area(target_area: TargetArea):
     for x_vel, y_vel in product(range(1,10), range(1,10)):
-        sim = simulate_trajectory(initial_velocity=Velocity(x_vel, y_vel), target_area=target_area)
+        sim = simulate_trajectory(init_velocity=Velocity(x_vel, y_vel), target_area=target_area)
         if sim.last_state().has_probe_within_target_area():
             return sim
 
