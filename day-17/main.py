@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass
 from itertools import product
 from multiprocessing import Pool
+from enum import Enum
 
 @dataclass
 class TargetArea:
@@ -73,6 +74,11 @@ def step_probe_state(probe_state : ProbeState) -> ProbeState :
 def init_probe_state(init_velocity: Velocity) -> ProbeState:
     return ProbeState(position=Position(x=0, y=0), velocity=init_velocity)
 
+class SimulationFailure(Enum):
+    NONE = 0
+    STOPPED_MOVING_AND_FELL_SHORT = 1
+    MOVED_PAST_TARGET_AREA_X_RANGE = 2
+    FELL_BELOW_TARGET_AREA_Y_RANGE = 3
 
 @dataclass
 class SimulationState:
@@ -85,19 +91,23 @@ class SimulationState:
             self.probe_state.position.y >= self.target_area.y_range[0] and \
             self.probe_state.position.y <= self.target_area.y_range[1]
 
-    def possible_to_hit_target(self):
+    def failure_to_hit_target_area(self):
         if self.probe_state.velocity.x == 0 and self.probe_state.position.x < self.target_area.x_range[0]:
             # stopped moving +x (to the right) and will not reach x_range of target_area
-            return False
+            return SimulationFailure.STOPPED_MOVING_AND_FELL_SHORT
+        
         if self.probe_state.position.x > self.target_area.x_range[1]:
             # is to the right of the target's x range and can only travel right
-            return False
+            return SimulationFailure.MOVED_PAST_TARGET_AREA_X_RANGE
+
         if self.probe_state.velocity.y < 0 and self.probe_state.position.y < self.target_area.y_range[1]:
             # is falling below the target area and will continue to fall
-            return False
-        # we could check for positive y_velocity, but it is possible to shoot up and fall down,
-        # so we won't count that case
-        return True
+            return SimulationFailure.FELL_BELOW_TARGET_AREA_Y_RANGE
+
+        return SimulationFailure.NONE
+
+    def possible_to_hit_target(self):
+        return self.failure_to_hit_target_area() == SimulationFailure.NONE
 
     def dist_from_target_area(self):
         '''Rough calc of distance from center of target area'''
@@ -110,6 +120,7 @@ class Simulation:
         logging.debug(f'Simulation initialized with init_state={init_state}')
         self.init_state = init_state
         self.steps = [] 
+        self.failure = None
 
     def add_step(self, step: SimulationState):
         self.steps.append(step)
