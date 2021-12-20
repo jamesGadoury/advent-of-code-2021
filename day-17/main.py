@@ -61,7 +61,7 @@ def step_probe_state(probe_state : ProbeState) -> ProbeState :
     # Due to drag, the probe's x velocity changes by 1 toward the value 0; 
     # that is, it decreases by 1 if it is greater than 0, 
     # increases by 1 if it is less than 0, or does not change if it is already 0.
-    v_x = probe_state.velocity.x - 1 if probe_state.velocity.x > 0 else probe_state.velocity.x + 1
+    v_x = probe_state.velocity.x - 1 if probe_state.velocity.x > 0 else (probe_state.velocity.x + 1 if probe_state.velocity.x < 0 else 0)
 
     # Due to gravity, the probe's y velocity decreases by 1.
     v_y = probe_state.velocity.y - 1
@@ -86,6 +86,9 @@ class SimulationState:
             self.probe_state.position.y <= self.target_area.y_range[1]
 
     def possible_to_hit_target(self):
+        if self.probe_state.velocity.x == 0 and self.probe_state.position.x < self.target_area.x_range[0]:
+            # stopped moving +x (to the right) and will not reach x_range of target_area
+            return False
         if self.probe_state.position.x > self.target_area.x_range[1]:
             # is to the right of the target's x range and can only travel right
             return False
