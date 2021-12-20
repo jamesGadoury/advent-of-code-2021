@@ -4,6 +4,7 @@ import sys
 import logging
 from dataclasses import dataclass
 from itertools import product
+from multiprocessing import Pool
 
 @dataclass
 class TargetArea:
@@ -118,15 +119,12 @@ def simulate_trajectory(init_velocity: Velocity, target_area: TargetArea, step_c
     return sim
 
 def find_sims_in_target_area(target_area: TargetArea):
-    sims = []
-    for x_vel, y_vel in product(range(-10,10), range(-10,10)):
-        if x_vel == 0 and y_vel == 0:
-            continue
-        init_velocity=Velocity(x_vel, y_vel)
-        sim = simulate_trajectory(init_velocity, target_area)
-        if sim.last_state().has_probe_within_target_area():
-            sims.append(sim)
-    return sims
+    executed_sims = None
+    sim_inputs = [(Velocity(x_vel, y_vel), target_area) for x_vel, y_vel in product(range(-100,100), range(-100,100))]
+    with Pool(processes=16) as pool:
+        executed_sims = pool.starmap(simulate_trajectory, sim_inputs)
+
+    return [sim for sim in executed_sims if sim.last_state().has_probe_within_target_area()] 
 
 def part_one(input_file_name):
     '''
