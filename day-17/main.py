@@ -85,6 +85,23 @@ class SimulationState:
             self.probe_state.position.y >= self.target_area.y_range[0] and \
             self.probe_state.position.y <= self.target_area.y_range[1]
 
+    def possible_to_hit_target(self):
+        if self.probe_state.position.x > self.target_area.x_range[1]:
+            # is to the right of the target's x range and can only travel right
+            return False
+        if self.probe_state.velocity.y < 0 and self.probe_state.position.y < self.target_area.y_range[1]:
+            # is falling below the target area and will continue to fall
+            return False
+        # we could check for positive y_velocity, but it is possible to shoot up and fall down,
+        # so we won't count that case
+        return True
+
+    def dist_from_target_area(self):
+        '''Rough calc of distance from center of target area'''
+        center_x = (self.target_area.x_range[0] + self.target_area.x_range[1]) / 2
+        center_y = (self.target_area.y_range[0] + self.target_area.y_range[1]) / 2
+        return ((self.probe_state.position.x - center_x)**2 + (self.probe_state.position.y - center_y)**2) ** 1/2
+
 class Simulation:
     def __init__(self, init_state: SimulationState):
         logging.debug(f'Simulation initialized with init_state={init_state}')
@@ -100,21 +117,24 @@ class Simulation:
     def initialized(self):
         return len(self.steps) != 0
 
-def simulate_trajectory(init_velocity: Velocity, target_area: TargetArea, step_count: int = 100) -> Simulation:
-    logging.debug(f'simulate_trajectory called with init_velocity={init_velocity}, target_area={target_area}, step_count={step_count}')
+def simulate_trajectory(init_velocity: Velocity, target_area: TargetArea) -> Simulation:
+    logging.debug(f'simulate_trajectory called with init_velocity={init_velocity}, target_area={target_area}')
     probe_state = init_probe_state(init_velocity)
     logging.debug(f'in simulate_trajectory, initial probe state: {probe_state}')
     sim = Simulation(init_state=SimulationState(probe_state=probe_state, target_area=target_area))
 
     # todo -> need to find a better condition for evaluation whether or not to keep stepping sim
-    for i in range(step_count):
+    # for i in range(step_count):
+    step = 1
+    while sim.last_state().possible_to_hit_target():
         probe_state = step_probe_state(sim.last_state().probe_state)
-        logging.debug(f'in simulate_trajectory, probe_state: {probe_state} for sim step: {i}')
+        logging.debug(f'in simulate_trajectory, probe_state: {probe_state} for sim step: {step}')
         new_sim_state = SimulationState(probe_state=probe_state, target_area=target_area)
         sim.add_step(new_sim_state)
         if new_sim_state.has_probe_within_target_area():
-            logging.info(f'in simulate trajectory, init_velocity={init_velocity} hits target area at step: {i} with state: {new_sim_state}')
+            logging.info(f'in simulate trajectory, init_velocity={init_velocity} hits target area at step: {step} with state: {new_sim_state}')
             return sim
+        step += 1
 
     return sim
 
