@@ -1,8 +1,9 @@
 # https://adventofcode.com/2021/day/17
 
 import sys
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
+from itertools import product
 
 @dataclass
 class TargetArea:
@@ -66,6 +67,57 @@ def step_probe_state(probe_state : ProbeState) -> ProbeState :
 
     return ProbeState(position=Position(x=r_x, y=r_y), velocity=Velocity(x=v_x, y=v_y))
 
+def init_probe_state(init_velocity: Velocity) -> ProbeState:
+    return ProbeState(position=Position(x=0, y=0), velocity=init_velocity)
+
+
+@dataclass
+class SimulationState:
+    probe_state: ProbeState
+    target_area: TargetArea
+
+    def has_probe_within_target_area(self):
+        return self.probe_state.position.x >= self.target_area.x_range[0] and \
+            self.probe_state.position.x <= self.target_area.x_range[1] and \
+            self.probe_state.position.y >= self.target_area.y_range[0] and \
+            self.probe_state.position.y <= self.target_area.y_range[1]
+
+class Simulation:
+    def __init__(self, init_state: SimulationState, steps: list = []):
+        self.init_state = init_state
+        self.steps = steps
+
+    def add_step(self, step: SimulationState):
+        self.steps.append(step)
+
+    def last_state(self):
+        return self.steps[-1] if len(self.steps) != 0 else self.init_state
+
+    def initialized(self):
+        return len(self.steps) != 0
+
+def simulate_trajectory(initial_velocity: Velocity, target_area: TargetArea, step_count: int = 100) -> Simulation:
+    sim = Simulation(init_state=SimulationState(probe_state=init_probe_state(initial_velocity), target_area=target_area))
+
+    # todo -> need to find a better condition for evaluation whether or not to keep stepping sim
+    for i in range(step_count):
+        probe_state = step_probe_state(sim.last_state().probe_state)
+        new_sim_state = SimulationState(probe_state=probe_state, target_area=target_area)
+        sim.add_step(new_sim_state)
+        if new_sim_state.has_probe_within_target_area():
+            logging.debug(f'in simulate trajectory, found init velocity that hits target area at step: {i} with state: {new_sim_state}')
+            return sim
+
+
+    logging.debug(f'in simulate trajectory, did not find init velocity that hits target area after {step_count} steps')
+    return sim
+
+
+def find_sim_in_target_area(target_area: TargetArea):
+    for x_vel, y_vel in product(range(1,10), range(1,10)):
+        sim = simulate_trajectory(initial_velocity=Velocity(x_vel, y_vel), target_area=target_area)
+        if sim.last_state().has_probe_within_target_area():
+            return sim
 
 def part_one(input_file_name):
     '''
@@ -75,7 +127,9 @@ def part_one(input_file_name):
     target_area = parse_file(input_file_name)
     logging.debug(f'in part_one, target_area={target_area}')
 
-    return -1
+    sim = find_sim_in_target_area(target_area)
+
+    return max([step.position.y for step in sim.steps]) if sim else -1
 
 
 def test_part_one():
