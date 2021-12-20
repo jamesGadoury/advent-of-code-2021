@@ -65,6 +65,8 @@ def step_probe_state(probe_state : ProbeState) -> ProbeState :
     # Due to gravity, the probe's y velocity decreases by 1.
     v_y = probe_state.velocity.y - 1
 
+    logging.debug(f'in step_probe_state, r_x:{r_x}, r_y:{r_y}, v_x:{v_x}, v_y:{v_y}')
+
     return ProbeState(position=Position(x=r_x, y=r_y), velocity=Velocity(x=v_x, y=v_y))
 
 def init_probe_state(init_velocity: Velocity) -> ProbeState:
@@ -84,6 +86,7 @@ class SimulationState:
 
 class Simulation:
     def __init__(self, init_state: SimulationState, steps: list = []):
+        logging.debug(f'Simulation initialized with init_state={init_state}, steps={steps}')
         self.init_state = init_state
         self.steps = steps
 
@@ -96,11 +99,12 @@ class Simulation:
     def initialized(self):
         return len(self.steps) != 0
 
-def simulate_trajectory(init_velocity: Velocity, target_area: TargetArea, step_count: int = 100) -> Simulation:
+def simulate_trajectory(init_velocity: Velocity, target_area: TargetArea, step_count: int = 10) -> Simulation:
     logging.debug(f'simulate_trajectory called with init_velocity={init_velocity}, target_area={target_area}, step_count={step_count}')
     probe_state = init_probe_state(init_velocity)
     logging.debug(f'in simulate_trajectory, initial probe state: {probe_state}')
-    sim = Simulation(init_state=SimulationState(probe_state=probe_state, target_area=target_area))
+    sim = Simulation(init_state=SimulationState(probe_state=probe_state, target_area=target_area), 
+                     steps=[])
 
     # todo -> need to find a better condition for evaluation whether or not to keep stepping sim
     for i in range(step_count):
@@ -109,11 +113,9 @@ def simulate_trajectory(init_velocity: Velocity, target_area: TargetArea, step_c
         new_sim_state = SimulationState(probe_state=probe_state, target_area=target_area)
         sim.add_step(new_sim_state)
         if new_sim_state.has_probe_within_target_area():
-            logging.debug(f'in simulate trajectory, found init velocity that hits target area at step: {i} with state: {new_sim_state}')
+            logging.info(f'in simulate trajectory, init_velocity={init_velocity} hits target area at step: {i} with state: {new_sim_state}')
             return sim
 
-
-    logging.debug(f'in simulate trajectory, did not find init velocity that hits target area after {step_count} steps')
     return sim
 
 
@@ -122,6 +124,7 @@ def find_sim_in_target_area(target_area: TargetArea):
         sim = simulate_trajectory(init_velocity=Velocity(x_vel, y_vel), target_area=target_area)
         if sim.last_state().has_probe_within_target_area():
             return sim
+    return None
 
 def part_one(input_file_name):
     '''
@@ -129,11 +132,11 @@ def part_one(input_file_name):
     within the target area after any step. What is the highest y position it reaches on this trajectory?
     '''
     target_area = parse_file(input_file_name)
-    logging.debug(f'in part_one, target_area={target_area}')
+    logging.info(f'in part_one, target_area={target_area}')
 
     sim = find_sim_in_target_area(target_area)
 
-    return max([step.position.y for step in sim.steps]) if sim else -1
+    return max([step.probe_state.position.y for step in sim.steps]) if sim else -1
 
 
 def test_part_one():
