@@ -32,6 +32,41 @@ def parse_file(input_file_name):
 
         return TargetArea(x_range=x_range, y_range=y_range)
 
+
+@dataclass
+class Position:
+    x : int
+    y : int
+
+@dataclass
+class Velocity:
+    x : int
+    y : int
+
+@dataclass
+class ProbeState:
+    position : Position
+    velocity : Velocity
+
+
+def step_probe_state(probe_state : ProbeState) -> ProbeState :
+    # The probe's x position increases by its x velocity.
+    r_x = probe_state.position.x + probe_state.velocity.x
+
+    # The probe's y position increases by its y velocity.
+    r_y = probe_state.position.y + probe_state.velocity.y
+
+    # Due to drag, the probe's x velocity changes by 1 toward the value 0; 
+    # that is, it decreases by 1 if it is greater than 0, 
+    # increases by 1 if it is less than 0, or does not change if it is already 0.
+    v_x = probe_state.velocity.x - 1 if probe_state.velocity.x > 0 else probe_state.velocity.x + 1
+
+    # Due to gravity, the probe's y velocity decreases by 1.
+    v_y = probe_state.velocity.y - 1
+
+    return ProbeState(position=Position(x=r_x, y=r_y), velocity=Velocity(x=v_x, y=v_y))
+
+
 def part_one(input_file_name):
     '''
     Find the initial velocity that causes the probe to reach the highest y position and still eventually be 
