@@ -117,32 +117,38 @@ class Simulation:
     def initialized(self):
         return len(self.steps) != 0
 
-def simulate_trajectory(init_velocity: Velocity, target_area: TargetArea) -> Simulation:
-    logging.debug(f'simulate_trajectory called with init_velocity={init_velocity}, target_area={target_area}')
-    probe_state = init_probe_state(init_velocity)
-    logging.debug(f'in simulate_trajectory, initial probe state: {probe_state}')
-    sim = Simulation(init_state=SimulationState(probe_state=probe_state, target_area=target_area))
+    def simulate_trajectory(self):
+        logging.debug(f'simulate_trajectory called with init_state={self.init_state}')
 
-    # todo -> need to find a better condition for evaluation whether or not to keep stepping sim
-    # for i in range(step_count):
-    step = 1
-    while sim.last_state().possible_to_hit_target():
-        probe_state = step_probe_state(sim.last_state().probe_state)
-        logging.debug(f'in simulate_trajectory, probe_state: {probe_state} for sim step: {step}')
-        new_sim_state = SimulationState(probe_state=probe_state, target_area=target_area)
-        sim.add_step(new_sim_state)
-        if new_sim_state.has_probe_within_target_area():
-            logging.info(f'in simulate trajectory, init_velocity={init_velocity} hits target area at step: {step} with state: {new_sim_state}')
-            return sim
-        step += 1
+        while self.last_state().possible_to_hit_target():
+            probe_state = step_probe_state(self.last_state().probe_state)
+            new_sim_state = SimulationState(probe_state=probe_state, target_area=self.init_state.target_area)
+            self.add_step(new_sim_state)
+            logging.debug(f'in simulate_trajectory, probe_state: {probe_state} for sim step: {len(self.steps)}')
+            if new_sim_state.has_probe_within_target_area():
+                logging.info(f'in simulate trajectory, init_velocity={self.init_state.probe_state.velocity} hits target area at step: {len(self.steps)} with state: {new_sim_state}')
+                return
 
+
+def generate_sims(target_area, x_range=range(-100, 100), y_range=range(-100, 100)):
+    sims = []
+    for x_vel, y_vel in product(x_range, y_range):
+        init_velocity = Velocity(x_vel, y_vel)
+        init_sim_state = SimulationState(init_probe_state(init_velocity), target_area)
+        if init_sim_state.possible_to_hit_target():
+            sims.append(Simulation(init_sim_state))
+
+    return sims
+
+def run_sim(sim: Simulation):
+    sim.simulate_trajectory()
     return sim
 
 def find_sims_in_target_area(target_area: TargetArea):
     executed_sims = None
-    sim_inputs = [(Velocity(x_vel, y_vel), target_area) for x_vel, y_vel in product(range(-100,100), range(-100,100))]
-    with Pool(processes=16) as pool:
-        executed_sims = pool.starmap(simulate_trajectory, sim_inputs)
+    sims = generate_sims(target_area)
+    with Pool(processes=15) as pool:
+        executed_sims = pool.map(run_sim, sims)
 
     return [sim for sim in executed_sims if sim.last_state().has_probe_within_target_area()] 
 
