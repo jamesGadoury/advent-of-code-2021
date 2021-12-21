@@ -23,4 +23,7 @@ if __name__ == '__main__':
     main(sys.argv)
 EOF
 
-google-chrome https://adventofcode.com/2021/day/$1
+if [ command -v google-chrome &> /dev/null ]
+then
+    google-chrome https://adventofcode.com/2021/day/$1
+fi
