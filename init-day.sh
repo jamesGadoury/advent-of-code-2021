@@ -23,7 +23,7 @@ if __name__ == '__main__':
     main(sys.argv)
 EOF
 
-if [ command -v google-chrome &> /dev/null ]
+if [ -n "$2" ];
 then
-    google-chrome https://adventofcode.com/2021/day/$1
+    $2 https://adventofcode.com/2021/day/$1
 fi
